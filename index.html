@@ -7,7 +7,32 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Gaegu:wght@400;700&family=Jua&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script>
+// QR 라이브러리 멀티 CDN 폴백 로더
+(function(){
+  window.__qrReady = new Promise(function(resolve){
+    var urls = [
+      'https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js',
+      'https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js',
+      'https://unpkg.com/qrious@4.0.2/dist/qrious.min.js'
+    ];
+    var i = 0;
+    function tryNext(){
+      if(i >= urls.length){
+        console.error('모든 QR CDN 실패');
+        resolve(false);
+        return;
+      }
+      var s = document.createElement('script');
+      s.src = urls[i++];
+      s.onload = function(){ console.log('QR 라이브러리 로드 성공:', s.src); resolve(true); };
+      s.onerror = function(){ console.warn('QR CDN 실패:', s.src); tryNext(); };
+      document.head.appendChild(s);
+    }
+    tryNext();
+  });
+})();
+</script>
 <style>
 :root{
   --frame-blue:#1aa0dc;
@@ -99,10 +124,10 @@ body::before{
   background:#fff;
 }
 .frame-card .pick-badge{
-  position:absolute;left:50%;bottom:-16px;transform:translateX(-50%);
+  position:absolute;left:50%;bottom:-12px;transform:translateX(-50%);
   background:var(--crown-yellow);color:var(--ink);
-  padding:10px 22px;border-radius:999px;
-  font-family:'Bagel Fat One';font-size:22px;
+  padding:6px 14px;border-radius:999px;
+  font-family:'Bagel Fat One';font-size:14px;
   box-shadow:0 4px 0 var(--crown-yellow-deep),0 6px 14px #0006;
   white-space:nowrap;
   opacity:0;transition:opacity .18s, transform .18s;
@@ -123,10 +148,10 @@ body::before{
 .btn{
   appearance:none;border:none;cursor:pointer;
   font-family:'Bagel Fat One',cursive;
-  font-size:30px;letter-spacing:.02em;
-  padding:18px 40px;border-radius:999px;
+  font-size:20px;letter-spacing:.02em;
+  padding:11px 26px;border-radius:999px;
   background:var(--crown-yellow);color:var(--ink);
-  box-shadow:0 6px 0 var(--crown-yellow-deep),0 10px 22px #0005;
+  box-shadow:0 5px 0 var(--crown-yellow-deep),0 8px 18px #0005;
   transition:transform .12s,box-shadow .12s;
 }
 .btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 8px 0 var(--crown-yellow-deep),0 14px 30px #0006}
@@ -158,7 +183,7 @@ body::before{
   position:absolute;inset:0;
   display:flex;align-items:center;justify-content:center;
   font-family:'Bagel Fat One',cursive;
-  font-size:260px;color:#fff;
+  font-size:180px;color:#fff;
   text-shadow:0 0 28px #000a,0 6px 0 var(--frame-blue-deep);
   pointer-events:none;opacity:0;
 }
@@ -174,28 +199,28 @@ body::before{
 @keyframes flashAnim{0%{opacity:0}10%{opacity:1}100%{opacity:0}}
 
 .rec-indicator{
-  position:absolute;top:14px;left:14px;
+  position:absolute;top:12px;left:12px;
   background:rgba(0,0,0,.6);color:#fff;
-  padding:8px 14px;border-radius:18px;
-  font-family:'Bagel Fat One';font-size:20px;
-  display:flex;align-items:center;gap:8px;
+  padding:5px 11px;border-radius:14px;
+  font-family:'Bagel Fat One';font-size:14px;
+  display:flex;align-items:center;gap:6px;
   opacity:0;transition:opacity .2s;
   pointer-events:none;
 }
 .rec-indicator.active{opacity:1}
 .rec-dot{
-  width:14px;height:14px;background:#ff3838;border-radius:50%;
+  width:9px;height:9px;background:#ff3838;border-radius:50%;
   animation:blink .8s ease-in-out infinite;
 }
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
 
-.thumbs{display:flex;gap:14px;align-items:center}
+.thumbs{display:flex;gap:10px;align-items:center}
 .thumb{
-  width:130px;aspect-ratio:499/396;
-  border-radius:12px;background:#ffffff22;
-  border:3.5px dashed #ffffff66;
+  width:100px;aspect-ratio:499/396;
+  border-radius:10px;background:#ffffff22;
+  border:3px dashed #ffffff66;
   display:flex;align-items:center;justify-content:center;
-  font-family:'Bagel Fat One';color:#ffffffaa;font-size:38px;
+  font-family:'Bagel Fat One';color:#ffffffaa;font-size:26px;
   overflow:hidden;transition:all .3s;
 }
 .thumb.filled{
@@ -220,11 +245,11 @@ body::before{
 .status-text{
   color:#fff;text-align:center;
   font-family:'Gaegu',cursive;font-weight:700;
-  font-size:32px;text-shadow:0 2px 0 var(--frame-blue-deep);
-  min-height:42px;
+  font-size:22px;text-shadow:0 2px 0 var(--frame-blue-deep);
+  min-height:30px;
 }
 .progress-label{
-  color:#fff;font-family:'Bagel Fat One';font-size:34px;
+  color:#fff;font-family:'Bagel Fat One';font-size:22px;
   text-shadow:0 2px 0 var(--frame-blue-deep);
 }
 
@@ -248,39 +273,39 @@ body::before{
 }
 .result-frame canvas{height:100%;width:auto;display:block;border-radius:4px}
 .result-panel{
-  display:flex;flex-direction:column;align-items:center;gap:16px;
-  min-width:340px;
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+  min-width:280px;
 }
 .result-title{
   font-family:'Bagel Fat One';
-  font-size:clamp(54px,6.5vw,76px);
-  color:#fff;text-shadow:0 4px 0 var(--frame-blue-deep);
+  font-size:clamp(36px,4.5vw,52px);
+  color:#fff;text-shadow:0 3px 0 var(--frame-blue-deep);
   text-align:center;
 }
 .result-sub{
   color:#fff;font-family:'Gaegu';font-weight:700;
-  font-size:26px;text-align:center;opacity:.95;
-  max-width:380px;line-height:1.4;
+  font-size:18px;text-align:center;opacity:.95;
+  max-width:300px;line-height:1.4;
 }
-.btn-row.vertical{flex-direction:column;width:100%;align-items:stretch}
+.btn-row.vertical{flex-direction:column;width:100%;align-items:stretch;gap:8px}
 .btn-row.vertical .btn{width:100%}
 .video-status{
-  font-family:'Gaegu';font-size:20px;color:#fff;opacity:.85;text-align:center;
-  min-height:24px;
+  font-family:'Gaegu';font-size:14px;color:#fff;opacity:.85;text-align:center;
+  min-height:18px;
 }
 
 /* QR CODE */
 .qr-wrap{
-  display:flex;flex-direction:column;align-items:center;gap:8px;
-  background:#fff;padding:14px;border-radius:18px;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  background:#fff;padding:10px;border-radius:14px;
   box-shadow:0 8px 24px #0007;
 }
 .qr-wrap canvas, .qr-wrap img{
-  display:block;width:200px;height:200px;
+  display:block;width:180px;height:180px;
 }
 .qr-caption{
-  font-family:'Gaegu';font-weight:700;font-size:20px;
-  color:var(--ink);text-align:center;line-height:1.2;
+  font-family:'Gaegu';font-weight:700;font-size:14px;
+  color:var(--ink);text-align:center;line-height:1.25;
 }
 
 .error-screen{
@@ -317,7 +342,7 @@ body::before{
 
   <section class="screen" id="screen-camera">
     <div class="title-wrap">
-      <h1 class="title" style="font-size:clamp(44px,5.5vw,66px)">찍는 중 <span class="accent">📸</span></h1>
+      <h1 class="title" style="font-size:clamp(30px,3.8vw,46px)">찍는 중 <span class="accent">📸</span></h1>
     </div>
     <div class="camera-stage">
       <div class="camera-box">
@@ -842,19 +867,32 @@ function getResultCanvasBlob(type, quality){
 
 async function renderQrCodeOnly(payload){
   const canvas = document.getElementById('qr-canvas');
-  if(typeof QRCode === 'undefined'){
+  // QR 라이브러리 로드 완료까지 대기 (최대 약 8초)
+  let ready = false;
+  if(window.__qrReady){
+    try{
+      ready = await Promise.race([
+        window.__qrReady,
+        new Promise(r => setTimeout(() => r(false), 8000))
+      ]);
+    }catch(e){ ready = false; }
+  }
+  if(!ready || typeof QRious === 'undefined'){
     const ctx = canvas.getContext('2d');
     canvas.width = 200; canvas.height = 200;
     ctx.fillStyle = '#fff'; ctx.fillRect(0,0,200,200);
     ctx.fillStyle = '#000'; ctx.font = '14px sans-serif';
     ctx.fillText('QR 라이브러리 로드 실패', 20, 100);
+    ctx.fillText('인터넷 연결 확인', 40, 124);
     return;
   }
-  await QRCode.toCanvas(canvas, payload, {
-    width: 400,
-    margin: 1,
-    errorCorrectionLevel: 'M',
-    color: { dark: '#0b2e45', light: '#ffffff' }
+  new QRious({
+    element: canvas,
+    value: payload,
+    size: 400,
+    level: 'M',
+    background: '#ffffff',
+    foreground: '#0b2e45'
   });
   canvas.style.width = '200px';
   canvas.style.height = '200px';
