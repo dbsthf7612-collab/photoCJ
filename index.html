@@ -605,9 +605,9 @@ async function runCaptureFlow(){
   stopCamera();
   await composeResult();
   showScreen('screen-result');
-  // 매 촬영마다 QR 새로 생성
-  renderQrToCanvas().catch(err => console.error('QR 생성 실패:', err));
-  composeVideoInBackground();
+  // 영상 합성과 QR(사진+영상 랜딩) 생성을 병렬로
+  const videoP = composeVideoInBackground();
+  renderQrToCanvas(videoP).catch(err => console.error('QR 생성 실패:', err));
 }
 
 function setStatus(t){ document.getElementById('status').textContent = t; }
@@ -765,11 +765,13 @@ async function composeVideoInBackground(){
     btn.disabled = false;
     btn.textContent = '🎬 동영상 저장 (.' + composedVideoExt + ')';
     statusEl.textContent = '동영상 준비 완료! · ' + (blob.size/1024/1024).toFixed(1) + ' MB';
+    return { blob, ext: composedVideoExt };
   }catch(err){
     btn.disabled = true;
     btn.textContent = '⚠ 동영상 생성 실패';
     statusEl.textContent = err.message || '알 수 없는 오류';
     console.error('Video compose failed:', err);
+    return null;
   }
 }
 
@@ -903,25 +905,109 @@ function setQrCaption(html){
   if(el) el.innerHTML = html;
 }
 
-async function renderQrToCanvas(){
+// 사진+영상 다운로드 랜딩 페이지 HTML을 생성
+function buildLandingHtml(photoUrl, videoUrl, ts, videoExt){
+  videoExt = videoExt || 'mp4';
+  const dateLabel = ts.slice(0,4)+'.'+ts.slice(4,6)+'.'+ts.slice(6,8);
+  const videoBlock = videoUrl ? `
+  <div class="media"><video src="${videoUrl}" controls playsinline preload="metadata"></video></div>
+  <a class="btn vbtn" href="${videoUrl}" download="충주CCC_영상_${ts}.${videoExt}" target="_blank" rel="noopener">🎬 영상 다운로드</a>` :
+  '<p class="warn">⏳ 영상은 합성/업로드 실패</p>';
+  return `<!DOCTYPE html>
+<html lang="ko"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>충주CCC 포토부스 ${dateLabel}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Helvetica',sans-serif;
+  background:linear-gradient(135deg,#1aa0dc,#0d7fb3);color:#fff;
+  min-height:100vh;padding:18px 14px 30px;text-align:center}
+h1{font-size:22px;margin:8px 0 4px;text-shadow:0 2px 0 #0d7fb3}
+.sub{font-size:12px;opacity:.9;margin-bottom:14px}
+.media{background:#fff;padding:6px;border-radius:14px;margin:0 auto 10px;display:inline-block;max-width:100%;box-shadow:0 6px 20px #0006}
+img,video{display:block;max-width:100%;max-height:55vh;border-radius:6px}
+.btn{display:inline-block;width:100%;max-width:320px;margin:6px 0;padding:13px 18px;
+  background:#ffd83d;color:#0b2e45;text-decoration:none;border-radius:999px;
+  font-weight:700;font-size:15px;box-shadow:0 4px 0 #f0b800;font-family:inherit}
+.btn:active{transform:translateY(2px);box-shadow:0 2px 0 #f0b800}
+.btn.vbtn{background:#ff6b9d;color:#fff;box-shadow:0 4px 0 #d8407a}
+.btn.vbtn:active{box-shadow:0 2px 0 #d8407a}
+.warn{font-size:13px;opacity:.9;margin:8px 0;padding:8px 14px;background:#ffffff22;border-radius:10px;display:inline-block}
+.tip{font-size:11.5px;opacity:.85;margin-top:16px;padding:0 8px;line-height:1.55}
+</style></head><body>
+<h1>📸 충주CCC 포토부스</h1>
+<p class="sub">${dateLabel} · 사진/영상을 폰에 저장하세요</p>
+<div class="media"><img src="${photoUrl}" alt="사진"></div>
+<a class="btn" href="${photoUrl}" download="충주CCC_사진_${ts}.jpg" target="_blank" rel="noopener">💾 사진 다운로드</a>
+${videoBlock}
+<p class="tip">📱 iPhone: 사진/영상 길게 눌러 "사진에 저장"<br>안드로이드: 위 버튼 누르면 다운로드</p>
+</body></html>`;
+}
+
+let qrSessionId = 0;
+
+async function renderQrToCanvas(videoPromise){
+  const session = ++qrSessionId;
   lastUploadedUrl = null;
   setQrCaption('📤 사진 업로드 중...');
   // 일단 QR 자리에 포토부스 URL을 그려둠 (업로드 실패해도 보이도록)
+  const ts = timestamp();
   const fallbackUrl = window.location.href.split('#')[0];
-  await renderQrCodeOnly(fallbackUrl + '?t=' + timestamp());
+  await renderQrCodeOnly(fallbackUrl + '?t=' + ts);
+  if(session !== qrSessionId) return;
 
   try{
-    // 사진을 JPEG로 변환 (PNG는 너무 큼)
-    const blob = await getResultCanvasBlob('image/jpeg', 0.9);
-    if(!blob) throw new Error('사진 변환 실패');
-    const filename = '충주CCC_포토부스_' + timestamp() + '.jpg';
-    const url = await uploadPhotoBlob(blob, filename);
-    lastUploadedUrl = url;
-    await renderQrCodeOnly(url);
-    setQrCaption('📱 폰으로 QR 스캔!<br>사진 바로 다운로드');
+    // 1) 사진 JPEG 변환
+    const photoBlob = await getResultCanvasBlob('image/jpeg', 0.9);
+    if(!photoBlob) throw new Error('사진 변환 실패');
+
+    // 2) 사진 업로드와 영상 합성을 병렬로
+    const [photoUrl, videoResult] = await Promise.all([
+      uploadPhotoBlob(photoBlob, '충주CCC_사진_' + ts + '.jpg'),
+      (videoPromise || Promise.resolve(null)).catch(() => null)
+    ]);
+    if(session !== qrSessionId) return;
+
+    // 3) 영상 업로드 (있다면)
+    let videoUrl = null;
+    let videoExt = 'mp4';
+    if(videoResult && videoResult.blob){
+      videoExt = videoResult.ext || 'mp4';
+      setQrCaption('📤 영상 업로드 중...');
+      try{
+        videoUrl = await uploadPhotoBlob(videoResult.blob, '충주CCC_영상_' + ts + '.' + videoExt);
+      }catch(e){
+        console.warn('영상 업로드 실패:', e);
+      }
+      if(session !== qrSessionId) return;
+    }
+
+    // 4) 사진+영상 다운로드 랜딩 페이지 빌드 → 업로드
+    setQrCaption('📤 다운로드 페이지 만드는 중...');
+    const html = buildLandingHtml(photoUrl, videoUrl, ts, videoExt);
+    const htmlBlob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    let landingUrl;
+    try{
+      landingUrl = await uploadPhotoBlob(htmlBlob, '충주CCC_' + ts + '.html');
+    }catch(e){
+      console.warn('랜딩 페이지 업로드 실패, 사진 URL로 폴백:', e);
+      landingUrl = photoUrl;
+    }
+    if(session !== qrSessionId) return;
+
+    // 5) 최종 QR
+    lastUploadedUrl = landingUrl;
+    await renderQrCodeOnly(landingUrl);
+    if(videoUrl){
+      setQrCaption('📱 QR 스캔!<br>사진 + 영상 다운로드');
+    } else {
+      setQrCaption('📱 QR 스캔!<br>사진 다운로드');
+    }
   }catch(err){
+    if(session !== qrSessionId) return;
     console.error('업로드 실패, 포토부스 URL로 폴백:', err);
-    setQrCaption('⚠ 자동 업로드 실패<br>QR은 포토부스 주소만 담겨요<br>(인터넷·차단 확인)');
+    setQrCaption('⚠ 자동 업로드 실패<br>(인터넷·차단 확인)');
   }
 }
 
